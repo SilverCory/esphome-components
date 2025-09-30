@@ -144,10 +144,10 @@ void HoermannController::send_response() {
     this->de_pin_->digital_write(true);
     
     // Manual sync break: Pull TX low for ~1ms. This is a robust way to create a break.
-    this->parent_->get_tx_pin()->pin_mode(gpio::FLAG_OUTPUT);
-    this->parent_->get_tx_pin()->digital_write(false);
+    this->tx_pin_->pin_mode(gpio::FLAG_OUTPUT);
+    this->tx_pin_->digital_write(false);
     delay(2);
-    this->parent_->get_tx_pin()->pin_mode(gpio::FLAG_INPUT); // Let UART take over again
+    this->tx_pin_->pin_mode(gpio::FLAG_INPUT); // Let UART take over again
 
     this->write_array(tx_buffer, len);
     this->flush();
