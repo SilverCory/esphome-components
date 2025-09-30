@@ -11,23 +11,25 @@ esp32:
 logger:
 
 # Enable Home Assistant API
-api:
-  encryption:
-    key: "YOUR_API_ENCRYPTION_KEY"
+# api:
+#   encryption:
+#     key: "YOUR_API_ENCRYPTION_KEY"
 
 ota:
+  platform: esphome
   password: "YOUR_OTA_PASSWORD"
 
-wifi:
-  ssid: "YOUR_WIFI_SSID"
-  password: "YOUR_WIFI_PASSWORD"
-
-  # Enable fallback hotspot (captive portal) in case wifi connection fails
+wifi:  # Enable fallback hotspot (captive portal) in case wifi connection fails
   ap:
     ssid: "Garage-Door Fallback Hotspot"
     password: "A_SECURE_PASSWORD"
 
 captive_portal:
+
+external_components:
+  - source:
+      type: local
+      path: components
 
 uart:
   id: uart_bus
@@ -49,44 +51,43 @@ cover:
 switch:
   - platform: hoermann_controller
     hoermann_controller_id: hoermann_door_controller
-    type: 'light'
+    type: light
     name: "${friendly_name} Light"
     icon: "mdi:lightbulb"
 
   - platform: hoermann_controller
     hoermann_controller_id: hoermann_door_controller
-    type: 'venting'
+    type: venting
     name: "${friendly_name} Venting"
     icon: "mdi:fan"
 
 binary_sensor:
   - platform: hoermann_controller
     hoermann_controller_id: hoermann_door_controller
-    type: 'error'
+    type: error
     name: "${friendly_name} Error"
     device_class: problem
 
   - platform: hoermann_controller
     hoermann_controller_id: hoermann_door_controller
-    type: 'prewarn'
+    type: prewarn
     name: "${friendly_name} Pre-Warning"
     device_class: safety
 
   - platform: hoermann_controller
     hoermann_controller_id: hoermann_door_controller
-    type: 'option_relay'
+    type: option_relay
     name: "${friendly_name} Option Relay"
 
 button:
   - platform: hoermann_controller
     hoermann_controller_id: hoermann_door_controller
-    type: 'impulse'
+    type: impulse
     name: "${friendly_name} Impulse"
     icon: "mdi:arrow-up-down"
 
   - platform: hoermann_controller
     hoermann_controller_id: hoermann_door_controller
-    type: 'emergency_stop'
+    type: emergency_stop
     name: "${friendly_name} Emergency Stop"
     icon: "mdi:alert-octagon"
-

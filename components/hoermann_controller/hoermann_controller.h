@@ -23,11 +23,12 @@ enum HoermannAction {
   ACTION_IMPULSE,
 };
 
-class HoermannController : public uart::UARTDevice {
+class HoermannController : public Component, public uart::UARTDevice {
  public:
   void setup() override;
   void loop() override;
   void dump_config() override;
+  float get_setup_priority() const override { return setup_priority::DATA; }
 
   void set_de_pin(GPIOPin *pin) { this->de_pin_ = pin; }
 
