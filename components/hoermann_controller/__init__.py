@@ -10,13 +10,12 @@ CONF_DE_PIN = "de_pin"
 hoermann_controller_ns = cg.esphome_ns.namespace("hoermann_controller")
 HoermannController = hoermann_controller_ns.class_("HoermannController", cg.Component, uart.UARTDevice)
 
-CONFIG_SCHEMA = cv.All(
-    uart.UART_DEVICE_SCHEMA.extend(
-        {
-            cv.GenerateID(): cv.declare_id(HoermannController),
-            cv.Required(CONF_DE_PIN): pins.gpio_output_pin_schema,
-        }
-    )
+# Removed the cv.All wrapper to resolve the circular dependency error.
+CONFIG_SCHEMA = uart.UART_DEVICE_SCHEMA.extend(
+    {
+        cv.GenerateID(): cv.declare_id(HoermannController),
+        cv.Required(CONF_DE_PIN): pins.gpio_output_pin_schema,
+    }
 )
 
 async def to_code(config):
