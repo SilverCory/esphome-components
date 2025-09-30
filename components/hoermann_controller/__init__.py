@@ -11,7 +11,7 @@ HoermannController = hoermann_controller_ns.class_("HoermannController", cg.Comp
 
 CONFIG_SCHEMA = cv.Schema({
     cv.GenerateID(): cv.declare_id(HoermannController),
-    cv.Required(CONF_DE_PIN): cv.gpio_pin_expression,
+    cv.Required(CONF_DE_PIN): cv.gpio_output_pin_schema,
 }).extend(uart.UART_DEVICE_SCHEMA)
 
 async def to_code(config):
