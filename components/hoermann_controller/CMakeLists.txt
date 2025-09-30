@@ -1,13 +1,9 @@
-# Collect all .cpp files from current directory and subdirectories
-file(GLOB COMPONENT_SRCS
-    "${CMAKE_CURRENT_LIST_DIR}/*.cpp"
-    "${CMAKE_CURRENT_LIST_DIR}/cover/*.cpp"
-    "${CMAKE_CURRENT_LIST_DIR}/switch/*.cpp"
-    "${CMAKE_CURRENT_LIST_DIR}/button/*.cpp"
-)
-
 idf_component_register(
-    SRCS ${COMPONENT_SRCS}
-    INCLUDE_DIRS "." "cover" "switch" "button"
+    SRCS
+        "hoermann_controller.cpp"
+        "hoermann_cover.cpp"
+        "hoermann_switch.cpp"
+        "hoermann_button.cpp"
+    INCLUDE_DIRS "."
     REQUIRES esphome
 )
