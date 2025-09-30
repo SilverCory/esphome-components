@@ -10,8 +10,6 @@
 namespace esphome {
 namespace hoermann_controller {
 
-static const char *const TAG = "hoermann_controller";
-
 static const uint8_t BROADCAST_ADDR = 0x00;
 static const uint8_t MASTER_ADDR = 0x80;
 static const uint8_t UAP1_ADDR = 0x28;
@@ -153,8 +151,8 @@ void HoermannController::send_response() {
     
     // Use native ESP-IDF function to send a break signal
     auto *idf_uart = static_cast<uart::IDFUARTComponent *>(this->parent_);
-    uart_wait_tx_done(idf_uart->get_uart_num(), 100 / portTICK_PERIOD_MS);
-    uart_set_break(idf_uart->get_uart_num(), 12);
+    uart_wait_tx_done(idf_uart->get_hw_serial(), 100 / portTICK_PERIOD_MS);
+    uart_set_break(idf_uart->get_hw_serial(), 12);
     delay(2); // Give it time to send
 
     this->write_array(tx_buffer, len);
@@ -205,14 +203,6 @@ void HoermannController::register_binary_sensor(const std::string &type, binary_
 }
 
 // --- Cover Methods ---
-cover::CoverTraits HoermannCover::get_traits() {
-    auto traits = cover::CoverTraits();
-    traits.set_is_assumed_state(false);
-    traits.set_supports_position(true);
-    traits.set_supports_stop(true);
-    return traits;
-}
-
 void HoermannCover::control(const cover::CoverCall &call) {
     if (call.get_stop()) this->parent_->trigger_action(ACTION_STOP);
     if (call.get_position().has_value()) {
