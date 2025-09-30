@@ -8,11 +8,12 @@ from esphome import pins
 CONF_DE_PIN = "de_pin"
 
 hoermann_controller_ns = cg.esphome_ns.namespace("hoermann_controller")
-# A UARTDevice is already a Component, so multi-inheritance is not needed.
-HoermannController = hoermann_controller_ns.class_("HoermannController", uart.UARTDevice, cg.Component)
+# Corrected inheritance: A UARTDevice is already a Component.
+# The redundant inheritance was causing the circular dependency.
+HoermannController = hoermann_controller_ns.class_("HoermannController", uart.UARTDevice)
 
 # The schema for a UART device. uart.UART_DEVICE_SCHEMA already includes
-# cv.COMPONENT_SCHEMA, so extending it again creates a circular dependency.
+# the necessary component schema, so extending it again is not needed.
 CONFIG_SCHEMA = uart.UART_DEVICE_SCHEMA.extend({
     cv.GenerateID(): cv.declare_id(HoermannController),
     cv.Required(CONF_DE_PIN): pins.gpio_output_pin_schema,
