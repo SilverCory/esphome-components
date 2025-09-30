@@ -1,29 +1,29 @@
 #pragma once
 
 #include "esphome/core/component.h"
-#include "esphome/components/button/button.h"
-#include "../hoermann_controller.h"
+#include "esphome/components/switch/switch.h"
+#include "hoermann_controller.h"
 
 namespace esphome {
 namespace hoermann_controller {
 
-class HoermannImpulseButton : public button::Button, public Component {
+class HoermannLightSwitch : public switch_::Switch, public Component {
  public:
   void set_controller(HoermannController *controller) { this->controller_ = controller; }
   void setup() override;
   void dump_config() override;
-  void press_action() override;
+  void write_state(bool state) override;
 
  protected:
   HoermannController *controller_;
 };
 
-class HoermannEmergencyStopButton : public button::Button, public Component {
+class HoermannVentingSwitch : public switch_::Switch, public Component {
  public:
   void set_controller(HoermannController *controller) { this->controller_ = controller; }
   void setup() override;
   void dump_config() override;
-  void press_action() override;
+  void write_state(bool state) override;
 
  protected:
   HoermannController *controller_;

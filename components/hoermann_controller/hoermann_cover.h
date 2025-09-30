@@ -2,7 +2,7 @@
 
 #include "esphome/core/component.h"
 #include "esphome/components/cover/cover.h"
-#include "../hoermann_controller.h"
+#include "hoermann_controller.h"
 
 namespace esphome {
 namespace hoermann_controller {
