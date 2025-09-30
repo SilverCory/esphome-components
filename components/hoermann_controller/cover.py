@@ -1,7 +1,7 @@
 import esphome.codegen as cg
 import esphome.config_validation as cv
 from esphome.components import cover
-from esphome.const import CONF_ID, CONF_NAME
+from esphome.const import CONF_ID
 from . import HoermannController, hoermann_controller_ns
 
 HoermannCover = hoermann_controller_ns.class_("HoermannCover", cover.Cover, cg.Component)

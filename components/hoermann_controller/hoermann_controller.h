@@ -103,7 +103,13 @@ class HoermannCover : public cover::Cover, public Component {
 public:
     void setup() override {}
     void set_parent(HoermannController *parent) { this->parent_ = parent; }
-    cover::CoverTraits get_traits() override;
+    inline cover::CoverTraits get_traits() override {
+        auto traits = cover::CoverTraits();
+        traits.set_is_assumed_state(false);
+        traits.set_supports_position(true);
+        traits.set_supports_stop(true);
+        return traits;
+    }
 
 protected:
     void control(const cover::CoverCall &call) override;

@@ -10,13 +10,7 @@ BINARY_SENSOR_TYPES = [
     "option_relay",
 ]
 
-CONFIG_SCHEMA = binary_sensor.binary_sensor_schema(
-    cv.deprecated(
-        "binary_sensor.hoermann_controller",
-        "2025.11.0",
-        "Use binary_sensor.hoermann_controller instead.",
-    )
-).extend({
+CONFIG_SCHEMA = binary_sensor.binary_sensor_schema().extend({
     cv.Required("hoermann_controller_id"): cv.use_id(HoermannController),
     cv.Required(CONF_TYPE): cv.one_of(*BINARY_SENSOR_TYPES, lower=True),
 })
