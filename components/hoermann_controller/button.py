@@ -12,7 +12,7 @@ BUTTON_TYPES = {
     "emergency_stop": HoermannEmergencyStopButton,
 }
 
-CONFIG_SCHEMA = button.button_schema().extend({
+CONFIG_SCHEMA = button.button_schema(button.Button).extend({
     cv.Required("hoermann_controller_id"): cv.use_id(HoermannController),
     cv.Required(CONF_TYPE): cv.enum(BUTTON_TYPES, lower=True),
 })
