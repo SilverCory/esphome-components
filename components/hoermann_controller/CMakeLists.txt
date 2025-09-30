@@ -1,9 +1,7 @@
+file(GLOB_RECURSE COMPONENT_SRCS "*.cpp")
+
 idf_component_register(
-    SRCS
-        "hoermann_controller.cpp"
-        "cover/hoermann_cover.cpp"
-        "switch/hoermann_switch.cpp"
-        "button/hoermann_button.cpp"
+    SRCS ${COMPONENT_SRCS}
     INCLUDE_DIRS "." "cover" "switch" "button"
     REQUIRES esphome
 )
