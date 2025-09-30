@@ -1,6 +1,6 @@
 import esphome.codegen as cg
 import esphome.config_validation as cv
-from esphome.components import switch_
+from esphome.components import switch as switch_
 from esphome.const import CONF_ID, CONF_TYPE
 from . import HoermannController, hoermann_controller_ns
 
