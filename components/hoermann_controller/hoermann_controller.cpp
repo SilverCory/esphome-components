@@ -151,8 +151,8 @@ void HoermannController::send_response() {
     
     // Use native ESP-IDF function to send a break signal
     auto *idf_uart = static_cast<uart::IDFUARTComponent *>(this->parent_);
-    uart_wait_tx_done(idf_uart->get_hw_serial(), 100 / portTICK_PERIOD_MS);
-    uart_set_break(idf_uart->get_hw_serial(), 12);
+    uart_wait_tx_done(idf_uart->get_uart_num(), 100 / portTICK_PERIOD_MS);
+    uart_set_break(idf_uart->get_uart_num(), 12);
     delay(2); // Give it time to send
 
     this->write_array(tx_buffer, len);
