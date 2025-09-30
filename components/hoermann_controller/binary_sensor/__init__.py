@@ -2,7 +2,7 @@ import esphome.codegen as cg
 import esphome.config_validation as cv
 from esphome.components import binary_sensor
 from esphome.const import CONF_ID, CONF_TYPE
-from . import hoermann_controller_ns, HoermannController
+from .. import hoermann_controller_ns, HoermannController
 
 CONF_HOERMANN_CONTROLLER_ID = "hoermann_controller_id"
 
@@ -13,14 +13,13 @@ BINARY_SENSOR_TYPES = {
 }
 
 CONFIG_SCHEMA = binary_sensor.binary_sensor_schema().extend({
+    cv.GenerateID(): cv.declare_id(binary_sensor.BinarySensor),
     cv.GenerateID(CONF_HOERMANN_CONTROLLER_ID): cv.use_id(HoermannController),
     cv.Required(CONF_TYPE): cv.enum(BINARY_SENSOR_TYPES, lower=True),
 })
 
 async def to_code(config):
-    parent = await cg.get_variable(config[CONF_HOERMANN_CONTROLLER_ID])
+    controller = await cg.get_variable(config[CONF_HOERMANN_CONTROLLER_ID])
     var = await binary_sensor.new_binary_sensor(config)
-    
-    registration_func = getattr(parent, BINARY_SENSOR_TYPES[config[CONF_TYPE]])
+    registration_func = getattr(controller, BINARY_SENSOR_TYPES[config[CONF_TYPE]])
     cg.add(registration_func(var))
-

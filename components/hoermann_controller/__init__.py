@@ -1,8 +1,8 @@
 import esphome.codegen as cg
 import esphome.config_validation as cv
 from esphome.components import uart
-from esphome.const import CONF_ID
 from esphome import pins
+from esphome.const import CONF_ID
 
 CONF_DE_PIN = "de_pin"
 
@@ -15,8 +15,8 @@ CONFIG_SCHEMA = uart.UART_DEVICE_SCHEMA.extend({
 })
 
 async def to_code(config):
-    var = await cg.get_variable(config[CONF_ID])
+    var = cg.new_Pvariable(config[CONF_ID])
     await uart.register_uart_device(var, config)
+
     de_pin = await cg.gpio_pin_expression(config[CONF_DE_PIN])
     cg.add(var.set_de_pin(de_pin))
-

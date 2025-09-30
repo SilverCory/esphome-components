@@ -4,11 +4,11 @@
 
 #ifdef USE_ESP_IDF
 #include "driver/uart.h"
+#include "esphome/components/uart/uart_component_esp_idf.h"
 #endif
 
 namespace esphome {
 namespace hoermann_controller {
-
 static const uint16_t RESPONSE_DEFAULT = 0x1000;
 static const uint16_t RESPONSE_EMERGENCY_STOP = 0x0000;
 static const uint16_t RESPONSE_OPEN = 0x1001;
@@ -16,7 +16,6 @@ static const uint16_t RESPONSE_CLOSE = 0x1002;
 static const uint16_t RESPONSE_VENTING = 0x1010;
 static const uint16_t RESPONSE_TOGGLE_LIGHT = 0x1008;
 static const uint16_t RESPONSE_IMPULSE = 0x1004;
-
 static const uint8_t BROADCAST_ADDR = 0x00;
 static const uint8_t MASTER_ADDR = 0x80;
 static const uint8_t UAP1_ADDR = 0x28;
@@ -42,201 +41,176 @@ static const uint8_t CRCTABLE[256] = {
     0x4E, 0x49, 0x40, 0x47, 0x52, 0x55, 0x5C, 0x5B, 0x76, 0x71, 0x78, 0x7F, 0x6A, 0x6D, 0x64, 0x63,
     0x3E, 0x39, 0x30, 0x37, 0x22, 0x25, 0x2C, 0x2B, 0x06, 0x01, 0x08, 0x0F, 0x1A, 0x1D, 0x14, 0x13,
     0xAE, 0xA9, 0xA0, 0xA7, 0xB2, 0xB5, 0xBC, 0xBB, 0x96, 0x91, 0x98, 0x9F, 0x8A, 0x8D, 0x84, 0x83,
-    0xDE, 0xD9, 0xD0, 0xD7, 0xC2, 0xC5, 0xCC, 0xCB, 0xE6, 0xE1, 0xE8, 0xEF, 0xFA, 0xFD, 0xF4, 0xF3
+    0xDE, 0xD9, 0xD0, 0xD7, 0xC2, 0xC5, 0xCC, 0xCB, 0E6, 0xE1, 0xE8, 0xEF, 0xFA, 0xFD, 0xF4, 0xF3
 };
 
 void HoermannController::setup() {
-    this->de_pin_->setup();
-    this->de_pin_->digital_write(false); // Set to receive mode
-    this->last_message_received_ms_ = millis();
+  this->de_pin_->setup();
+  this->de_pin_->digital_write(false);
+  this->last_message_received_ms_ = millis();
 }
 
 void HoermannController::dump_config() {
-    ESP_LOGCONFIG(TAG, "Hörmann Controller:");
-    LOG_PIN("  DE Pin: ", this->de_pin_);
-    ESP_LOGCONFIG(TAG, "  UART Bus configured");
+  ESP_LOGCONFIG(TAG, "Hörmann Controller:");
+  LOG_PIN("  DE Pin: ", this->de_pin_);
+  ESP_LOGCONFIG(TAG, "  UART Bus configured");
 }
 
 void HoermannController::loop() {
-    uint8_t buffer[32];
-    
-    // Simple timing-based message separation
-    if (this->available() && (millis() - this->last_message_received_ms_ > 10)) {
-        int len = this->read_array(buffer, sizeof(buffer));
-        if (len > 0) {
-            this->last_message_received_ms_ = millis();
-            // Assuming the first byte is often 0 due to framing break
-            uint8_t *start_of_message = buffer;
-            uint8_t msg_len = len;
-            if (buffer[0] == 0x00 && len > 1) {
-                start_of_message = buffer + 1;
-                msg_len = len - 1;
-            }
+  uint8_t buffer[32];
 
-            if (this->crc8(start_of_message, msg_len) == 0) {
-                parse_message(start_of_message, msg_len);
-            } else {
-                ESP_LOGW(TAG, "Received invalid checksum for message of length %d", msg_len);
-            }
-        }
-    }
+  if (this->available() && (millis() - this->last_message_received_ms_ > 10)) {
+    int len = this->read_array(buffer, sizeof(buffer));
+    if (len > 0) {
+      this->last_message_received_ms_ = millis();
 
-    if (this->tx_message_ready_) {
-        // Wait a few ms before replying
-        if (millis() - this->last_message_received_ms_ > 3) {
-            this->send_response();
-            this->tx_message_ready_ = false;
-        }
+      uint8_t *start_of_message = buffer;
+      uint8_t msg_len = len;
+      if (buffer[0] == 0x00 && len > 1) {
+        start_of_message = buffer + 1;
+        msg_len = len - 1;
+      }
+
+      if (this->crc8(start_of_message, msg_len) == 0) {
+        parse_message(start_of_message, msg_len);
+      } else {
+        ESP_LOGW(TAG, "Received invalid checksum for message of length %d", msg_len);
+      }
     }
+  }
+
+  if (this->tx_message_ready_) {
+    if (millis() - this->last_message_received_ms_ > 3) {
+      this->send_response();
+      this->tx_message_ready_ = false;
+    }
+  }
 }
 
 void HoermannController::parse_message(const uint8_t *buffer, uint8_t len) {
-    uint8_t msg_len = buffer[1] & 0x0F;
-    
-    if (buffer[0] == BROADCAST_ADDR && msg_len == 0x02) {
-        uint16_t status = (buffer[3] << 8) | buffer[2];
-        
-        bool is_open = (status & 0x01) != 0;
-        bool is_closed = (status & 0x02) != 0;
-        bool is_opening = (status & 0x60) == 0x40;
-        bool is_closing = (status & 0x60) == 0x60;
+  if (len < 2)
+    return;
+  uint8_t msg_len = buffer[1] & 0x0F;
 
-        if (this->cover_) {
-            if (is_open) this->cover_->position = 1.0;
-            else if (is_closed) this->cover_->position = 0.0;
-            else if (is_opening) this->cover_->position = 0.5; // In-between state
-            else if (is_closing) this->cover_->position = 0.5; // In-between state
-            else this->cover_->position = 0.0; // Assume stopped means closed
-            
-            this->cover_->current_operation = is_opening ? cover::COVER_OPERATION_OPENING :
-                                              is_closing ? cover::COVER_OPERATION_CLOSING :
-                                              cover::COVER_OPERATION_IDLE;
-            this->cover_->publish_state();
-        }
+  if (buffer[0] == BROADCAST_ADDR && msg_len == 0x02 && len >= 4) {
+    uint16_t status = (buffer[3] << 8) | buffer[2];
 
-        if (this->light_switch_) this->light_switch_->publish_state((status & 0x08) != 0);
-        if (this->venting_switch_) this->venting_switch_->publish_state((status & 0x80) != 0);
-        if (this->error_sensor_) this->error_sensor_->publish_state((status & 0x10) != 0);
-        if (this->prewarn_sensor_) this->prewarn_sensor_->publish_state((buffer[3] & 0x01) != 0);
-        if (this->option_relay_sensor_) this->option_relay_sensor_->publish_state((status & 0x04) != 0);
+    bool is_open = (status & 0x01) != 0;
+    bool is_closed = (status & 0x02) != 0;
+    bool is_opening = (status & 0x60) == 0x40;
+    bool is_closing = (status & 0x60) == 0x60;
 
-    } else if (buffer[0] == UAP1_ADDR) {
-        if (msg_len == 0x02 && buffer[2] == CMD_SLAVE_SCAN) {
-            ESP_LOGD(TAG, "Responding to bus scan");
-            this->tx_message_ready_ = true;
-        } else if (msg_len == 0x01 && buffer[2] == CMD_SLAVE_STATUS_REQUEST) {
-            ESP_LOGD(TAG, "Responding to status request with action: 0x%04X", this->slave_response_data_);
-            this->tx_message_ready_ = true;
-        }
+    if (this->cover_) {
+      if (is_open)
+        this->cover_->position = cover::COVER_OPEN;
+      else if (is_closed)
+        this->cover_->position = cover::COVER_CLOSED;
+      else if (is_opening || is_closing)
+        this->cover_->position = 0.5;
+      else
+        this->cover_->position = cover::COVER_CLOSED;
+
+      this->cover_->current_operation = is_opening   ? cover::COVER_OPERATION_OPENING
+                                        : is_closing ? cover::COVER_OPERATION_CLOSING
+                                                     : cover::COVER_OPERATION_IDLE;
+      this->cover_->publish_state();
     }
+
+    if (this->light_switch_)
+      this->light_switch_->publish_state((status & 0x08) != 0);
+    if (this->venting_switch_)
+      this->venting_switch_->publish_state((status & 0x80) != 0);
+    if (this->error_sensor_)
+      this->error_sensor_->publish_state((status & 0x10) != 0);
+    if (this->prewarn_sensor_)
+      this->prewarn_sensor_->publish_state((buffer[3] & 0x01) != 0);
+    if (this->option_relay_sensor_)
+      this->option_relay_sensor_->publish_state((status & 0x04) != 0);
+
+  } else if (buffer[0] == UAP1_ADDR && len >= 3) {
+    if (msg_len == 0x02 && buffer[2] == CMD_SLAVE_SCAN) {
+      ESP_LOGD(TAG, "Responding to bus scan");
+      this->slave_response_data_ = RESPONSE_DEFAULT;
+      this->tx_message_ready_ = true;
+    } else if (msg_len == 0x01 && buffer[2] == CMD_SLAVE_STATUS_REQUEST) {
+      ESP_LOGD(TAG, "Responding to status request with action: 0x%04X", this->slave_response_data_);
+      this->tx_message_ready_ = true;
+    }
+  }
 }
 
 void HoermannController::send_response() {
-    uint8_t tx_buffer[8];
-    uint8_t len = 0;
+  uint8_t tx_buffer[8];
+  uint8_t len = 0;
 
-    if (this->slave_response_data_ != RESPONSE_DEFAULT) {
-        tx_buffer[0] = MASTER_ADDR;
-        tx_buffer[1] = 0x03 | 0x10;
-        tx_buffer[2] = CMD_SLAVE_STATUS_RESPONSE;
-        tx_buffer[3] = (uint8_t)this->slave_response_data_;
-        tx_buffer[4] = (uint8_t)(this->slave_response_data_ >> 8);
-        tx_buffer[5] = this->crc8(tx_buffer, 5);
-        len = 6;
-        this->slave_response_data_ = RESPONSE_DEFAULT;
-    } else { // Bus scan response
-        tx_buffer[0] = MASTER_ADDR;
-        tx_buffer[1] = 0x2 | 0x10;
-        tx_buffer[2] = UAP1_TYPE;
-        tx_buffer[3] = UAP1_ADDR;
-        tx_buffer[4] = this->crc8(tx_buffer, 4);
-        len = 5;
-    }
+  if (this->slave_response_data_ != RESPONSE_DEFAULT) {
+    tx_buffer[0] = MASTER_ADDR;
+    tx_buffer[1] = 0x03 | 0x10;
+    tx_buffer[2] = CMD_SLAVE_STATUS_RESPONSE;
+    tx_buffer[3] = (uint8_t) this->slave_response_data_;
+    tx_buffer[4] = (uint8_t) (this->slave_response_data_ >> 8);
+    tx_buffer[5] = this->crc8(tx_buffer, 5);
+    len = 6;
+    this->slave_response_data_ = RESPONSE_DEFAULT;
+  } else {
+    tx_buffer[0] = MASTER_ADDR;
+    tx_buffer[1] = 0x02 | 0x10;
+    tx_buffer[2] = UAP1_TYPE;
+    tx_buffer[3] = UAP1_ADDR;
+    tx_buffer[4] = this->crc8(tx_buffer, 4);
+    len = 5;
+  }
 
-    // Set DE pin to enable transmit
-    this->de_pin_->digital_write(true);
-    
-    // A short delay acts as the break/sync for the bus
-    delay(2);
+  this->de_pin_->digital_write(true);
 
-    this->write_array(tx_buffer, len);
-    this->flush();
+#ifdef USE_ESP_IDF
+  auto *idf_uart = static_cast<uart::IDFUARTComponent *>(this);
+  uart_wait_tx_done(idf_uart->get_uart_num(), 100 / portTICK_PERIOD_MS);
+  uart_set_break(idf_uart->get_uart_num(), 12);
+  delay(2);
+#else
+  delay(5);
+#endif
 
-    // Set DE pin back to receive
-    this->de_pin_->digital_write(false);
+  this->write_array(tx_buffer, len);
+  this->flush();
+
+  this->de_pin_->digital_write(false);
 }
 
 void HoermannController::trigger_action(HoermannAction action) {
-    switch (action) {
-        case ACTION_STOP:
-            this->slave_response_data_ = RESPONSE_IMPULSE;
-            break;
-        case ACTION_OPEN:
-            this->slave_response_data_ = RESPONSE_OPEN;
-            break;
-        case ACTION_CLOSE:
-            this->slave_response_data_ = RESPONSE_CLOSE;
-            break;
-        case ACTION_VENTING:
-            this->slave_response_data_ = RESPONSE_VENTING;
-            break;
-        case ACTION_TOGGLE_LIGHT:
-            this->slave_response_data_ = RESPONSE_TOGGLE_LIGHT;
-            break;
-        case ACTION_EMERGENCY_STOP:
-            this->slave_response_data_ = RESPONSE_EMERGENCY_STOP;
-            break;
-        case ACTION_IMPULSE:
-            this->slave_response_data_ = RESPONSE_IMPULSE;
-            break;
-    }
+  switch (action) {
+    case ACTION_STOP:
+      this->slave_response_data_ = RESPONSE_IMPULSE;
+      break;
+    case ACTION_OPEN:
+      this->slave_response_data_ = RESPONSE_OPEN;
+      break;
+    case ACTION_CLOSE:
+      this->slave_response_data_ = RESPONSE_CLOSE;
+      break;
+    case ACTION_VENTING:
+      this->slave_response_data_ = RESPONSE_VENTING;
+      break;
+    case ACTION_TOGGLE_LIGHT:
+      this->slave_response_data_ = RESPONSE_TOGGLE_LIGHT;
+      break;
+    case ACTION_EMERGENCY_STOP:
+      this->slave_response_data_ = RESPONSE_EMERGENCY_STOP;
+      break;
+    case ACTION_IMPULSE:
+      this->slave_response_data_ = RESPONSE_IMPULSE;
+      break;
+  }
 }
 
 uint8_t HoermannController::crc8(const uint8_t *data, uint8_t len) {
-    uint8_t crc = CRC8_INITIAL_VALUE;
-    for (uint8_t i = 0; i < len; i++) {
-        crc = CRCTABLE[data[i] ^ crc];
-    }
-    return crc;
+  uint8_t crc = CRC8_INITIAL_VALUE;
+  for (uint8_t i = 0; i < len; i++) {
+    crc = CRCTABLE[data[i] ^ crc];
+  }
+  return crc;
 }
-
-void HoermannController::register_binary_sensor(const std::string &type, binary_sensor::BinarySensor *sensor) {
-    if (type == "error") this->error_sensor_ = sensor;
-    else if (type == "prewarn") this->prewarn_sensor_ = sensor;
-    else if (type == "option_relay") this->option_relay_sensor_ = sensor;
-}
-
-// --- Cover Methods ---
-void HoermannCover::control(const cover::CoverCall &call) {
-    if (call.get_stop()) this->parent_->trigger_action(ACTION_STOP);
-    if (call.get_position().has_value()) {
-        if (*call.get_position() == cover::COVER_OPEN) this->parent_->trigger_action(ACTION_OPEN);
-        else if (*call.get_position() == cover::COVER_CLOSED) this->parent_->trigger_action(ACTION_CLOSE);
-    }
-}
-
-// --- Switch Methods ---
-void HoermannLightSwitch::write_state(bool state) {
-    this->parent_->trigger_action(ACTION_TOGGLE_LIGHT);
-    publish_state(this->state);
-}
-
-void HoermannVentingSwitch::write_state(bool state) {
-    if (state) this->parent_->trigger_action(ACTION_VENTING);
-    else this->parent_->trigger_action(ACTION_CLOSE); // Turn off venting by closing
-    publish_state(this->state);
-}
-
-// --- Button Methods ---
-void HoermannImpulseButton::press_action() {
-    this->parent_->trigger_action(ACTION_IMPULSE);
-}
-
-void HoermannEmergencyStopButton::press_action() {
-    this->parent_->trigger_action(ACTION_EMERGENCY_STOP);
-}
-
 
 }  // namespace hoermann_controller
 }  // namespace esphome
-

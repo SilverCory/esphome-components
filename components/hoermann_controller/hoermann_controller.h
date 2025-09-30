@@ -1,121 +1,67 @@
 #pragma once
 
 #include "esphome/core/component.h"
+#include "esphome/core/hal.h"
 #include "esphome/components/uart/uart.h"
 #include "esphome/components/cover/cover.h"
 #include "esphome/components/switch/switch.h"
-#include "esphome/components/binary_sensor/binary_sensor.h"
 #include "esphome/components/button/button.h"
-#include "esphome/core/hal.h"
+#include "esphome/components/binary_sensor/binary_sensor.h"
 
 namespace esphome {
 namespace hoermann_controller {
 
 static const char *const TAG = "hoermann_controller";
 
-// Forward declarations
-class HoermannController;
-class HoermannCover;
-class HoermannLightSwitch;
-class HoermannVentingSwitch;
-class HoermannImpulseButton;
-class HoermannEmergencyStopButton;
-
 enum HoermannAction {
-    ACTION_STOP,
-    ACTION_OPEN,
-    ACTION_CLOSE,
-    ACTION_VENTING,
-    ACTION_TOGGLE_LIGHT,
-    ACTION_EMERGENCY_STOP,
-    ACTION_IMPULSE
+  ACTION_STOP,
+  ACTION_OPEN,
+  ACTION_CLOSE,
+  ACTION_VENTING,
+  ACTION_TOGGLE_LIGHT,
+  ACTION_EMERGENCY_STOP,
+  ACTION_IMPULSE,
 };
 
-class HoermannController : public uart::UARTDevice, public Component {
-public:
-    void setup() override;
-    void loop() override;
-    void dump_config() override;
+class HoermannController : public uart::UARTDevice {
+ public:
+  void setup() override;
+  void loop() override;
+  void dump_config() override;
 
-    void set_de_pin(GPIOPin *de_pin) { this->de_pin_ = de_pin; }
-    void register_cover(HoermannCover *cover) { this->cover_ = cover; }
-    void register_light_switch(HoermannLightSwitch *sw) { this->light_switch_ = sw; }
-    void register_venting_switch(HoermannVentingSwitch *sw) { this->venting_switch_ = sw; }
-    void register_impulse_button(HoermannImpulseButton *btn) { this->impulse_button_ = btn; }
-    void register_emergency_stop_button(HoermannEmergencyStopButton *btn) { this->emergency_stop_button_ = btn; }
-    void register_binary_sensor(const std::string &type, binary_sensor::BinarySensor *sensor);
+  void set_de_pin(GPIOPin *pin) { this->de_pin_ = pin; }
 
-    void trigger_action(HoermannAction action);
+  void register_cover(cover::Cover *cover) { this->cover_ = cover; }
+  void register_light_switch(switch_::Switch *sw) { this->light_switch_ = sw; }
+  void register_venting_switch(switch_::Switch *sw) { this->venting_switch_ = sw; }
+  void register_impulse_button(button::Button *btn) { this->impulse_button_ = btn; }
+  void register_emergency_stop_button(button::Button *btn) { this->emergency_stop_button_ = btn; }
+  void register_error_sensor(binary_sensor::BinarySensor *sensor) { this->error_sensor_ = sensor; }
+  void register_prewarn_sensor(binary_sensor::BinarySensor *sensor) { this->prewarn_sensor_ = sensor; }
+  void register_option_relay_sensor(binary_sensor::BinarySensor *sensor) { this->option_relay_sensor_ = sensor; }
 
-protected:
-    void parse_message(const uint8_t *buffer, uint8_t len);
-    void send_response();
-    uint8_t crc8(const uint8_t *data, uint8_t len);
+  void trigger_action(HoermannAction action);
 
-    GPIOPin *de_pin_;
-    HoermannCover *cover_{nullptr};
-    HoermannLightSwitch *light_switch_{nullptr};
-    HoermannVentingSwitch *venting_switch_{nullptr};
-    HoermannImpulseButton *impulse_button_{nullptr};
-    HoermannEmergencyStopButton *emergency_stop_button_{nullptr};
-    binary_sensor::BinarySensor *error_sensor_{nullptr};
-    binary_sensor::BinarySensor *prewarn_sensor_{nullptr};
-    binary_sensor::BinarySensor *option_relay_sensor_{nullptr};
+ protected:
+  void parse_message(const uint8_t *buffer, uint8_t len);
+  void send_response();
+  uint8_t crc8(const uint8_t *data, uint8_t len);
 
-    bool tx_message_ready_{false};
-    uint32_t last_message_received_ms_{0};
-    uint16_t slave_response_data_{0x1000}; // RESPONSE_DEFAULT
-};
+  GPIOPin *de_pin_;
 
-class HoermannLightSwitch : public switch_::Switch {
-public:
-    HoermannLightSwitch(HoermannController *parent) : parent_(parent) {}
-protected:
-    void write_state(bool state) override;
-    HoermannController *parent_;
-};
+  cover::Cover *cover_{nullptr};
+  switch_::Switch *light_switch_{nullptr};
+  switch_::Switch *venting_switch_{nullptr};
+  button::Button *impulse_button_{nullptr};
+  button::Button *emergency_stop_button_{nullptr};
+  binary_sensor::BinarySensor *error_sensor_{nullptr};
+  binary_sensor::BinarySensor *prewarn_sensor_{nullptr};
+  binary_sensor::BinarySensor *option_relay_sensor_{nullptr};
 
-class HoermannVentingSwitch : public switch_::Switch {
-public:
-    HoermannVentingSwitch(HoermannController *parent) : parent_(parent) {}
-protected:
-    void write_state(bool state) override;
-    HoermannController *parent_;
-};
-
-class HoermannImpulseButton : public button::Button {
-public:
-    HoermannImpulseButton(HoermannController *parent) : parent_(parent) {}
-protected:
-    void press_action() override;
-    HoermannController *parent_;
-};
-
-class HoermannEmergencyStopButton : public button::Button {
-public:
-    HoermannEmergencyStopButton(HoermannController *parent) : parent_(parent) {}
-protected:
-    void press_action() override;
-    HoermannController *parent_;
-};
-
-class HoermannCover : public cover::Cover, public Component {
-public:
-    void setup() override {}
-    void set_parent(HoermannController *parent) { this->parent_ = parent; }
-    inline cover::CoverTraits get_traits() override {
-        auto traits = cover::CoverTraits();
-        traits.set_is_assumed_state(false);
-        traits.set_supports_position(true);
-        traits.set_supports_stop(true);
-        return traits;
-    }
-
-protected:
-    void control(const cover::CoverCall &call) override;
-    HoermannController *parent_;
+  uint32_t last_message_received_ms_{0};
+  bool tx_message_ready_{false};
+  uint16_t slave_response_data_{0x1000};
 };
 
 }  // namespace hoermann_controller
 }  // namespace esphome
-
