@@ -1,7 +1,10 @@
 import esphome.codegen as cg
 import esphome.config_validation as cv
 from esphome.components import uart
-from esphome.const import CONF_ID, CONF_DE_PIN
+from esphome.const import CONF_ID
+
+# Define a local constant for the DE pin configuration key
+CONF_DE_PIN = "de_pin"
 
 hoermann_controller_ns = cg.esphome_ns.namespace("hoermann_controller")
 HoermannController = hoermann_controller_ns.class_("HoermannController", cg.Component, uart.UARTDevice)
