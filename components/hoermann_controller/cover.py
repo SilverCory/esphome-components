@@ -6,7 +6,8 @@ from . import hoermann_controller_ns, HoermannController
 
 CONF_HOERMANN_CONTROLLER_ID = "hoermann_controller_id"
 
-HoermannCover = hoermann_controller_ns.class_("HoermannCover", cover.Cover, cg.Component)
+# Corrected inheritance: a cover.Cover is already a Component.
+HoermannCover = hoermann_controller_ns.class_("HoermannCover", cover.Cover)
 
 CONFIG_SCHEMA = cover.cover_schema(HoermannCover).extend({
     cv.GenerateID(CONF_HOERMANN_CONTROLLER_ID): cv.use_id(HoermannController),

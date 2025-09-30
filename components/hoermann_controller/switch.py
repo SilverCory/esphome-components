@@ -6,6 +6,7 @@ from . import hoermann_controller_ns, HoermannController
 
 CONF_HOERMANN_CONTROLLER_ID = "hoermann_controller_id"
 
+# Corrected inheritance: a switch_.Switch is already a Component.
 HoermannLightSwitch = hoermann_controller_ns.class_("HoermannLightSwitch", switch_.Switch)
 HoermannVentingSwitch = hoermann_controller_ns.class_("HoermannVentingSwitch", switch_.Switch)
 

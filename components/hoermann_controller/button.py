@@ -6,6 +6,7 @@ from . import hoermann_controller_ns, HoermannController
 
 CONF_HOERMANN_CONTROLLER_ID = "hoermann_controller_id"
 
+# Corrected inheritance: a button.Button is already a Component.
 HoermannImpulseButton = hoermann_controller_ns.class_("HoermannImpulseButton", button.Button)
 HoermannEmergencyStopButton = hoermann_controller_ns.class_("HoermannEmergencyStopButton", button.Button)
 
