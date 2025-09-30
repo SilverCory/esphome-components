@@ -11,13 +11,16 @@ BINARY_SENSOR_TYPES = [
 ]
 
 CONFIG_SCHEMA = binary_sensor.binary_sensor_schema().extend({
+    cv.GenerateID(): cv.declare_id(binary_sensor.BinarySensor),
     cv.Required("hoermann_controller_id"): cv.use_id(HoermannController),
-    cv.Required(CONF_TYPE): cv.one_of(*BINARY_SENSOR_TYPES, lower=True),
+    cv.Required(CONF_TYPE): cv.enum(BINARY_SENSOR_TYPES, lower=True),
 })
 
 async def to_code(config):
     parent = await cg.get_variable(config["hoermann_controller_id"])
-    var = await binary_sensor.new_binary_sensor(config)
+    var = cg.new_P(config[CONF_ID])
+    await binary_sensor.register_binary_sensor(var, config)
     
-    cg.add(parent.register_binary_sensor(config[CONF_TYPE], var))
+    sensor_type = config[CONF_TYPE]
+    cg.add(parent.register_binary_sensor(sensor_type, var))
 

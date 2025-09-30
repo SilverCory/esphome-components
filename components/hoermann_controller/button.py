@@ -13,6 +13,7 @@ BUTTON_TYPES = {
 }
 
 CONFIG_SCHEMA = button.button_schema(button.Button).extend({
+    cv.GenerateID(): cv.declare_id(button.Button),
     cv.Required("hoermann_controller_id"): cv.use_id(HoermannController),
     cv.Required(CONF_TYPE): cv.enum(BUTTON_TYPES, lower=True),
 })
