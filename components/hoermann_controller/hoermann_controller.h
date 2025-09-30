@@ -38,6 +38,7 @@ class HoermannController : public Component, public uart::UARTDevice {
   void register_error_sensor(binary_sensor::BinarySensor *sensor) { this->error_sensor_ = sensor; }
   void register_prewarn_sensor(binary_sensor::BinarySensor *sensor) { this->prewarn_sensor_ = sensor; }
   void register_option_relay_sensor(binary_sensor::BinarySensor *sensor) { this->option_relay_sensor_ = sensor; }
+  void register_connected_sensor(binary_sensor::BinarySensor *sensor) { this->connected_sensor_ = sensor; }
 
   void trigger_action(HoermannAction action);
 
@@ -56,10 +57,12 @@ class HoermannController : public Component, public uart::UARTDevice {
   binary_sensor::BinarySensor *error_sensor_{nullptr};
   binary_sensor::BinarySensor *prewarn_sensor_{nullptr};
   binary_sensor::BinarySensor *option_relay_sensor_{nullptr};
+  binary_sensor::BinarySensor *connected_sensor_{nullptr};
 
   uint32_t last_message_received_ms_{0};
   bool tx_message_ready_{false};
   uint16_t slave_response_data_{0x1000};
+  bool is_connected_{false};
 };
 
 }  // namespace hoermann_controller

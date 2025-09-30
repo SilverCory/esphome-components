@@ -10,6 +10,7 @@ BINARY_SENSOR_TYPES = {
     "error": "register_error_sensor",
     "prewarn": "register_prewarn_sensor",
     "option_relay": "register_option_relay_sensor",
+    "connected": "register_connected_sensor",
 }
 
 CONFIG_SCHEMA = binary_sensor.binary_sensor_schema().extend({

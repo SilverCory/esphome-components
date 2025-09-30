@@ -1,6 +1,9 @@
+substitutions:
+  friendly_name: "Garage Door"
+
 esphome:
   name: garage-door
-  friendly_name: garage-door
+  friendly_name: ${friendly_name}
 
 esp32:
   board: esp32dev
@@ -78,6 +81,12 @@ binary_sensor:
     hoermann_controller_id: hoermann_door_controller
     type: option_relay
     name: "${friendly_name} Option Relay"
+
+  - platform: hoermann_controller
+    hoermann_controller_id: hoermann_door_controller
+    type: connected
+    name: "${friendly_name} Connected"
+    device_class: connectivity
 
 button:
   - platform: hoermann_controller

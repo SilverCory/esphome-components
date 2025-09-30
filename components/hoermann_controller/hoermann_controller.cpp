@@ -83,6 +83,20 @@ void HoermannController::loop() {
       this->tx_message_ready_ = false;
     }
   }
+
+  // Check connection status (5 second timeout)
+  bool connected = (millis() - this->last_message_received_ms_) < 5000;
+  if (connected != this->is_connected_) {
+    this->is_connected_ = connected;
+    if (this->connected_sensor_) {
+      this->connected_sensor_->publish_state(this->is_connected_);
+    }
+    if (!this->is_connected_) {
+      ESP_LOGW(TAG, "Lost connection to HCP bus");
+    } else {
+      ESP_LOGI(TAG, "Connected to HCP bus");
+    }
+  }
 }
 
 void HoermannController::parse_message(const uint8_t *buffer, uint8_t len) {
