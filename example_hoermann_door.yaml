@@ -1,46 +1,34 @@
-# ==============================================================================
-# ESPHome Configuration for Hörmann Garage Door Controller (with RS-485)
-#
-# WIRING:
-# 1. Connect an RS-485 Transceiver (e.g., MAX485 module) to your ESP32.
-#    - ESP32 TX (GPIO17) -> MAX485 DI (Driver Input)
-#    - ESP32 RX (GPIO16) -> MAX485 RO (Receiver Output)
-#    - ESP32 DE_PIN (GPIO4) -> MAX485 DE & RE (Driver/Receiver Enable)
-#    - MAX485 A/B -> Hörmann Bus A/B
-#    - Provide VCC (3.3V or 5V) and GND to the MAX485 module.
-# ==============================================================================
-
-substitutions:
-  name: hoermann-garage-door
-  friendly_name: "Hörmann Garage Door"
-
 esphome:
-  name: ${name}
-  friendly_name: ${friendly_name}
-  platformio_options:
-    build_flags: -std=c++17
-    platform: espressif32@6.5.0
+  name: garage-door
+  friendly_name: garage-door
 
 esp32:
-  board: nodemcu-32s
+  board: esp32dev
   framework:
-    type: arduino
-    
+    type: esp-idf
 
+# Enable logging
 logger:
 
+# Enable Home Assistant API
 api:
+  encryption:
+    key: "YOUR_API_ENCRYPTION_KEY"
 
 ota:
-  platform: esphome 
+  password: "YOUR_OTA_PASSWORD"
 
 wifi:
-  ssid: "Your WiFi SSID"
-  password: "Your WiFi Password"
-  fast_connect: true
+  ssid: "YOUR_WIFI_SSID"
+  password: "YOUR_WIFI_PASSWORD"
 
-# Set up the UART bus for RS-485 communication.
-# The Hörmann bus uses a 19200 baud rate.
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Garage-Door Fallback Hotspot"
+    password: "A_SECURE_PASSWORD"
+
+captive_portal:
+
 uart:
   id: uart_bus
   tx_pin: GPIO17
@@ -48,20 +36,10 @@ uart:
   baud_rate: 19200
   stop_bits: 1
 
-external_components:
-  - source:
-      type: local
-      path: components
-
-# Instantiate the main controller for the door.
-# This component now handles the low-level RS-485 protocol.
 hoermann_controller:
   id: hoermann_door_controller
   uart_id: uart_bus
-  de_pin: GPIO4 # Pin to control the MAX485 Driver/Receiver Enable
-
-# The entities below are automatically created by the custom component.
-# They do not need to be changed.
+  de_pin: GPIO4
 
 cover:
   - platform: hoermann_controller
@@ -98,7 +76,6 @@ binary_sensor:
     hoermann_controller_id: hoermann_door_controller
     type: 'option_relay'
     name: "${friendly_name} Option Relay"
-    device_class: power
 
 button:
   - platform: hoermann_controller
