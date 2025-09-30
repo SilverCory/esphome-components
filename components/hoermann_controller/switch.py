@@ -4,8 +4,8 @@ from esphome.components import switch_
 from esphome.const import CONF_ID, CONF_TYPE
 from . import HoermannController, hoermann_controller_ns
 
-HoermannLightSwitch = hoermann_controller_ns.class_("HoermannLightSwitch", switch_::Switch)
-HoermannVentingSwitch = hoermann_controller_ns.class_("HoermannVentingSwitch", switch_::Switch)
+HoermannLightSwitch = hoermann_controller_ns.class_("HoermannLightSwitch", switch_.Switch)
+HoermannVentingSwitch = hoermann_controller_ns.class_("HoermannVentingSwitch", switch_.Switch)
 
 SWITCH_TYPES = {
     "light": HoermannLightSwitch,
