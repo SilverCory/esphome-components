@@ -2,8 +2,15 @@
 #include "esphome/core/log.h"
 #include "esphome/core/hal.h"
 
+#ifdef USE_ESP_IDF
+#include "driver/uart.h"
+#include "esphome/components/uart/uart_component_esp_idf.h"
+#endif
+
 namespace esphome {
 namespace hoermann_controller {
+
+static const char *const TAG = "hoermann_controller";
 
 static const uint8_t BROADCAST_ADDR = 0x00;
 static const uint8_t MASTER_ADDR = 0x80;
@@ -64,7 +71,7 @@ void HoermannController::loop() {
             if (this->crc8(start_of_message, msg_len) == 0) {
                 parse_message(start_of_message, msg_len);
             } else {
-                ESP_LOGW(TAG, "Received invalid checksum");
+                ESP_LOGW(TAG, "Received invalid checksum for message of length %d", msg_len);
             }
         }
     }
@@ -92,9 +99,10 @@ void HoermannController::parse_message(const uint8_t *buffer, uint8_t len) {
         if (this->cover_) {
             if (is_open) this->cover_->position = 1.0;
             else if (is_closed) this->cover_->position = 0.0;
-            else if (is_opening) this->cover_->position = 0.5;
-            else if (is_closing) this->cover_->position = 0.5;
-            else this->cover_->position = 0.0;
+            else if (is_opening) this->cover_->position = 0.5; // In-between state
+            else if (is_closing) this->cover_->position = 0.5; // In-between state
+            else this->cover_->position = 0.0; // Assume stopped means closed
+            
             this->cover_->current_operation = is_opening ? cover::COVER_OPERATION_OPENING :
                                               is_closing ? cover::COVER_OPERATION_CLOSING :
                                               cover::COVER_OPERATION_IDLE;
@@ -143,11 +151,11 @@ void HoermannController::send_response() {
     // Set DE pin to enable transmit
     this->de_pin_->digital_write(true);
     
-    // Manual sync break: Pull TX low for ~1ms. This is a robust way to create a break.
-    this->tx_pin_->pin_mode(gpio::FLAG_OUTPUT);
-    this->tx_pin_->digital_write(false);
-    delay(2);
-    this->tx_pin_->pin_mode(gpio::FLAG_INPUT); // Let UART take over again
+    // Use native ESP-IDF function to send a break signal
+    auto *idf_uart = static_cast<uart::IDFUARTComponent *>(this->parent_);
+    uart_wait_tx_done(idf_uart->get_uart_num(), 100 / portTICK_PERIOD_MS);
+    uart_set_break(idf_uart->get_uart_num(), 12);
+    delay(2); // Give it time to send
 
     this->write_array(tx_buffer, len);
     this->flush();
@@ -197,9 +205,14 @@ void HoermannController::register_binary_sensor(const std::string &type, binary_
 }
 
 // --- Cover Methods ---
-void HoermannCover::setup() {}
-void HoermannCover::loop() {}
-void HoermannCover::dump_config() { ESP_LOGCONFIG(TAG, "Hörmann Cover"); }
+cover::CoverTraits HoermannCover::get_traits() {
+    auto traits = cover::CoverTraits();
+    traits.set_is_assumed_state(false);
+    traits.set_supports_position(true);
+    traits.set_supports_stop(true);
+    return traits;
+}
+
 void HoermannCover::control(const cover::CoverCall &call) {
     if (call.get_stop()) this->parent_->trigger_action(ACTION_STOP);
     if (call.get_position().has_value()) {
@@ -216,7 +229,7 @@ void HoermannLightSwitch::write_state(bool state) {
 
 void HoermannVentingSwitch::write_state(bool state) {
     if (state) this->parent_->trigger_action(ACTION_VENTING);
-    else this->parent_->trigger_action(ACTION_CLOSE);
+    else this->parent_->trigger_action(ACTION_CLOSE); // Turn off venting by closing
     publish_state(this->state);
 }
 
