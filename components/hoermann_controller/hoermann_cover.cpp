@@ -4,7 +4,7 @@
 namespace esphome {
 namespace hoermann_controller {
 
-static const char *const TAG = "hoermann_controller.cover";
+static const char *TAG = "hoermann_controller.cover";
 
 void HoermannCover::setup() {
   this->controller_->register_cover(this);

@@ -4,7 +4,7 @@
 namespace esphome {
 namespace hoermann_controller {
 
-static const char *const TAG = "hoermann_controller.button";
+static const char *TAG = "hoermann_controller.button";
 
 void HoermannImpulseButton::setup() {
   this->controller_->register_impulse_button(this);

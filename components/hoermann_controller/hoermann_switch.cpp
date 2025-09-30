@@ -4,7 +4,7 @@
 namespace esphome {
 namespace hoermann_controller {
 
-static const char *const TAG = "hoermann_controller.switch";
+static const char *TAG = "hoermann_controller.switch";
 
 void HoermannLightSwitch::setup() {
   this->controller_->register_light_switch(this);

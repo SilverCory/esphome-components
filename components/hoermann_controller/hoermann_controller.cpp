@@ -4,6 +4,9 @@
 
 namespace esphome {
 namespace hoermann_controller {
+
+static const char *TAG = "hoermann_controller";
+
 static const uint16_t RESPONSE_DEFAULT = 0x1000;
 static const uint16_t RESPONSE_EMERGENCY_STOP = 0x0000;
 static const uint16_t RESPONSE_OPEN = 0x1001;

@@ -11,8 +11,6 @@
 namespace esphome {
 namespace hoermann_controller {
 
-static const char *const TAG = "hoermann_controller";
-
 enum HoermannAction {
   ACTION_STOP,
   ACTION_OPEN,
