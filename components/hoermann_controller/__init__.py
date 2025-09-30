@@ -10,10 +10,14 @@ CONF_DE_PIN = "de_pin"
 hoermann_controller_ns = cg.esphome_ns.namespace("hoermann_controller")
 HoermannController = hoermann_controller_ns.class_("HoermannController", cg.Component, uart.UARTDevice)
 
-CONFIG_SCHEMA = cv.Schema({
-    cv.GenerateID(): cv.declare_id(HoermannController),
-    cv.Required(CONF_DE_PIN): pins.gpio_output_pin_schema,
-}).extend(uart.UART_DEVICE_SCHEMA)
+CONFIG_SCHEMA = cv.All(
+    uart.UART_DEVICE_SCHEMA.extend(
+        {
+            cv.GenerateID(): cv.declare_id(HoermannController),
+            cv.Required(CONF_DE_PIN): pins.gpio_output_pin_schema,
+        }
+    )
+)
 
 async def to_code(config):
     var = cg.new_P(config[CONF_ID])
