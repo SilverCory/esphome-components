@@ -12,7 +12,7 @@ SWITCH_TYPES = {
     "venting": HoermannVentingSwitch,
 }
 
-CONFIG_SCHEMA = switch_.switch_schema().extend({
+CONFIG_SCHEMA = switch_.switch_schema(switch_.Switch).extend({
     cv.Required("hoermann_controller_id"): cv.use_id(HoermannController),
     cv.Required(CONF_TYPE): cv.enum(SWITCH_TYPES, lower=True),
 })
