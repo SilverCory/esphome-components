@@ -20,8 +20,11 @@ CONFIG_SCHEMA = cv.All(
 )
 
 async def to_code(config):
-    var = cg.new_P(config[CONF_ID])
-    await cg.register_component(var, config)
+    # Retrieve the component instance that was declared by the schema
+    var = await cg.get_variable(config[CONF_ID])
+    
+    # The component is already registered by the schema, so we just need to
+    # register it as a UART device.
     await uart.register_uart_device(var, config)
     
     de_pin = await cg.gpio_pin_expression(config[CONF_DE_PIN])
