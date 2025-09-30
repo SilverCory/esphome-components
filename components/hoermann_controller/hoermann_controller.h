@@ -52,6 +52,7 @@ public:
     HoermannLightSwitch(HoermannController *parent) : parent_(parent) {}
 protected:
     void write_state(bool state) override;
+    HoermannController *parent_;
 };
 
 class HoermannVentingSwitch : public switch_::Switch, public Component {
@@ -59,6 +60,7 @@ public:
     HoermannVentingSwitch(HoermannController *parent) : parent_(parent) {}
 protected:
     void write_state(bool state) override;
+    HoermannController *parent_;
 };
 
 class HoermannImpulseButton : public button::Button, public Component {
@@ -66,6 +68,7 @@ public:
     HoermannImpulseButton(HoermannController *parent) : parent_(parent) {}
 protected:
     void press_action() override;
+    HoermannController *parent_;
 };
 
 class HoermannEmergencyStopButton : public button::Button, public Component {
@@ -73,6 +76,7 @@ public:
     HoermannEmergencyStopButton(HoermannController *parent) : parent_(parent) {}
 protected:
     void press_action() override;
+    HoermannController *parent_;
 };
 
 

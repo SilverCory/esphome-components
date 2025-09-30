@@ -1,7 +1,6 @@
 #include "hoermann_controller.h"
 #include "esphome/core/log.h"
 #include "esphome/core/hal.h"
-#include <driver/uart.h>
 
 namespace esphome {
 namespace hoermann_controller {
@@ -43,31 +42,27 @@ void HoermannController::setup() {
 void HoermannController::dump_config() {
     ESP_LOGCONFIG(TAG, "Hörmann Controller:");
     LOG_PIN("  DE Pin: ", this->de_pin_);
-    LOG_UART_DEVICE(this);
+    ESP_LOGCONFIG(TAG, "  UART Bus: %s", this->parent_->get_name().c_str());
 }
 
 void HoermannController::loop() {
     uint8_t buffer[32];
-    int len = 0;
-    static int framing_error_counter = 0;
-
-    // The Hörmann bus uses a framing break to signal the start of a message.
-    // We check for framing errors to detect this.
-    if (uart_get_buffered_data_len(this->parent_->get_uart_num(), (size_t*)&len) == ESP_OK && len > 0) {
-        if (this->parent_->peek_byte(&buffer[0])) {
-             if (buffer[0] == 0) framing_error_counter++; // Likely a framing break
-        }
-    }
-
-    if (framing_error_counter > 0) {
-        framing_error_counter = 0;
-        // Wait a bit for the full message to arrive
-        delay(5); 
-        len = this->read_array(buffer, sizeof(buffer));
+    
+    // Simple timing-based message separation
+    if (this->available() && (millis() - this->last_message_received_ms_ > 10)) {
+        int len = this->read_array(buffer, sizeof(buffer));
         if (len > 0) {
             this->last_message_received_ms_ = millis();
-            if (this->crc8(buffer, len) == 0) {
-                parse_message(buffer, len);
+            // Assuming the first byte is often 0 due to framing break
+            uint8_t *start_of_message = buffer;
+            uint8_t msg_len = len;
+            if (buffer[0] == 0x00 && len > 1) {
+                start_of_message = buffer + 1;
+                msg_len = len - 1;
+            }
+
+            if (this->crc8(start_of_message, msg_len) == 0) {
+                parse_message(start_of_message, msg_len);
             } else {
                 ESP_LOGW(TAG, "Received invalid checksum");
             }
@@ -75,7 +70,7 @@ void HoermannController::loop() {
     }
 
     if (this->tx_message_ready_) {
-        // Wait a few ms before replying, as the original PIC firmware did
+        // Wait a few ms before replying
         if (millis() - this->last_message_received_ms_ > 3) {
             this->send_response();
             this->tx_message_ready_ = false;
@@ -97,9 +92,9 @@ void HoermannController::parse_message(const uint8_t *buffer, uint8_t len) {
         if (this->cover_) {
             if (is_open) this->cover_->position = 1.0;
             else if (is_closed) this->cover_->position = 0.0;
-            else if (is_opening) this->cover_->position = 0.5; // Use 0.5 for intermediate state
+            else if (is_opening) this->cover_->position = 0.5;
             else if (is_closing) this->cover_->position = 0.5;
-            else this->cover_->position = 0.0; // Stopped somewhere
+            else this->cover_->position = 0.0;
             this->cover_->current_operation = is_opening ? cover::COVER_OPERATION_OPENING :
                                               is_closing ? cover::COVER_OPERATION_CLOSING :
                                               cover::COVER_OPERATION_IDLE;
@@ -129,7 +124,7 @@ void HoermannController::send_response() {
 
     if (this->slave_response_data_ != RESPONSE_DEFAULT) {
         tx_buffer[0] = MASTER_ADDR;
-        tx_buffer[1] = 0x03 | 0x10; // counter doesn't matter much
+        tx_buffer[1] = 0x03 | 0x10;
         tx_buffer[2] = CMD_SLAVE_STATUS_RESPONSE;
         tx_buffer[3] = (uint8_t)this->slave_response_data_;
         tx_buffer[4] = (uint8_t)(this->slave_response_data_ >> 8);
@@ -138,7 +133,7 @@ void HoermannController::send_response() {
         this->slave_response_data_ = RESPONSE_DEFAULT;
     } else { // Bus scan response
         tx_buffer[0] = MASTER_ADDR;
-        tx_buffer[1] = 0x02 | 0x10; // counter doesn't matter much
+        tx_buffer[1] = 0x02 | 0x10;
         tx_buffer[2] = UAP1_TYPE;
         tx_buffer[3] = UAP1_ADDR;
         tx_buffer[4] = this->crc8(tx_buffer, 4);
@@ -148,10 +143,11 @@ void HoermannController::send_response() {
     // Set DE pin to enable transmit
     this->de_pin_->digital_write(true);
     
-    // The bus requires a sync break before the message
-    // A 12-bit break is approx 0.625ms at 19200 baud, which is what the PIC did.
-    uart_set_break(this->parent_->get_uart_num(), 12);
-    delay(2); // Wait for break to send
+    // Manual sync break: Pull TX low for ~1ms. This is a robust way to create a break.
+    this->parent_->get_tx_pin()->pin_mode(gpio::FLAG_OUTPUT);
+    this->parent_->get_tx_pin()->digital_write(false);
+    delay(2);
+    this->parent_->get_tx_pin()->pin_mode(gpio::FLAG_INPUT); // Let UART take over again
 
     this->write_array(tx_buffer, len);
     this->flush();
@@ -163,7 +159,7 @@ void HoermannController::send_response() {
 void HoermannController::trigger_action(HoermannAction action) {
     switch (action) {
         case ACTION_STOP:
-            this->slave_response_data_ = RESPONSE_IMPULSE; // Stop is same as impulse
+            this->slave_response_data_ = RESPONSE_IMPULSE;
             break;
         case ACTION_OPEN:
             this->slave_response_data_ = RESPONSE_OPEN;
@@ -215,12 +211,12 @@ void HoermannCover::control(const cover::CoverCall &call) {
 // --- Switch Methods ---
 void HoermannLightSwitch::write_state(bool state) {
     this->parent_->trigger_action(ACTION_TOGGLE_LIGHT);
-    publish_state(this->state); // Optimistically publish the current state
+    publish_state(this->state);
 }
 
 void HoermannVentingSwitch::write_state(bool state) {
     if (state) this->parent_->trigger_action(ACTION_VENTING);
-    else this->parent_->trigger_action(ACTION_CLOSE); // Turn off venting by closing
+    else this->parent_->trigger_action(ACTION_CLOSE);
     publish_state(this->state);
 }
 
