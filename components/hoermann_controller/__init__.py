@@ -7,7 +7,7 @@ from esphome.const import CONF_ID
 CONF_DE_PIN = "de_pin"
 
 hoermann_controller_ns = cg.esphome_ns.namespace("hoermann_controller")
-HoermannController = hoermann_controller_ns.class_("HoermannController", uart.UARTDevice)
+HoermannController = hoermann_controller_ns.class_("HoermannController", cg.Component, uart.UARTDevice)
 
 CONFIG_SCHEMA = uart.UART_DEVICE_SCHEMA.extend({
     cv.GenerateID(): cv.declare_id(HoermannController),
@@ -16,7 +16,11 @@ CONFIG_SCHEMA = uart.UART_DEVICE_SCHEMA.extend({
 
 async def to_code(config):
     var = cg.new_Pvariable(config[CONF_ID])
+    await cg.register_component(var, config)
     await uart.register_uart_device(var, config)
 
     de_pin = await cg.gpio_pin_expression(config[CONF_DE_PIN])
     cg.add(var.set_de_pin(de_pin))
+
+    # Explicitly add source files
+    cg.add_platformio_option("build_src_filter", ["+<esphome/components/hoermann_controller/*.cpp>"])
